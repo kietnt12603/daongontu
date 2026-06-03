@@ -1,0 +1,28 @@
+# Dependencies
+**/node_modules/
+
+# Next.js build output
+**/frontend/.next/
+**/frontend/out/
+
+# NestJS build output
+**/backend/dist/
+
+# Local databases and temporary files
+**/backend/*.db
+**/backend/*.db-journal
+
+# Environment variables
+**/backend/.env
+**/frontend/.env.local
+**/frontend/.env.*.local
+**/frontend/.env
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

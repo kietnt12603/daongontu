@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  READER
+  AUTHOR
+  ADMIN
+}
+
+enum AuthorStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum TransactionType {
+  DEPOSIT      // Nạp tiền vào tài khoản
+  PURCHASE     // Mua chương truyện VIP
+  WITHDRAWAL   // Rút tiền tác giả
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  role         Role          @default(READER)
+  coins        Decimal       @default(0) @db.Decimal(12, 2) // Dùng Decimal tránh sai lệch số thập phân
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  authorProfile Author?       // Quan hệ 1-1: Mỗi User chỉ có tối đa 1 hồ sơ tác giả
+  purchases     Purchase[]
+  transactions  Transaction[]
+}
+
+model Author {
+  id             String       @id @default(uuid())
+  userId         String       @unique // Đảm bảo tính duy nhất
+  user           User         @relation(fields: [userId], references: [id])
+  penName        String       @unique
+  bio            String?
+  bankInfo       String       // Thông tin ngân hàng nhận tiền
+  status         AuthorStatus @default(PENDING)
+  commissionRate Decimal      @default(0.70) @db.Decimal(3, 2) // Tỷ lệ chia sẻ doanh thu động (Ví dụ: 0.70 cho 70%)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  novels         Novel[]
+  withdrawals    Withdrawal[]
+}
+
+model Novel {
+  id          String    @id @default(uuid())
+  authorId    String
+  author      Author    @relation(fields: [authorId], references: [id])
+  title       String
+  summary     String    @db.Text
+  coverUrl    String?
+  status      String    @default("ONGOING") // ONGOING, COMPLETED
+  views       Int       @default(0)
+  rating      Float     @default(5.0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  chapters    Chapter[]
+}
+
+model Chapter {
+  id            String    @id @default(uuid())
+  novelId       String
+  novel         Novel     @relation(fields: [novelId], references: [id])
+  chapterNumber Int
+  title         String
+  content       String    @db.Text
+  isVip         Boolean   @default(false)
+  coinPrice     Decimal   @default(0) @db.Decimal(10, 2)
+  status        String    @default("PUBLISHED") // DRAFT, PUBLISHED
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  purchases     Purchase[]
+}
+
+model Purchase {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  chapterId   String
+  chapter     Chapter  @relation(fields: [chapterId], references: [id])
+  coinsPaid   Decimal  @db.Decimal(10, 2)
+  purchasedAt DateTime @default(now())
+
+  @@unique([userId, chapterId]) // Ràng buộc unique phức hợp tránh mua trùng chương 2 lần
+}
+
+model Transaction {
+  id        String            @id @default(uuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id])
+  amount    Decimal           @db.Decimal(12, 2)
+  type      TransactionType
+  status    TransactionStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+}
+
+model Withdrawal {
+  id        String           @id @default(uuid())
+  authorId  String
+  author    Author           @relation(fields: [authorId], references: [id])
+  amount    Decimal          @db.Decimal(12, 2)
+  bankInfo  String
+  status    WithdrawalStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
